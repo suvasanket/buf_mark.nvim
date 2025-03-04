@@ -7,11 +7,12 @@ M.file_map = {}
 local function goto_file(char, filemap)
 	local file_path = filemap[char]
 	if not file_path then
-		vim.notify("No file mapped for key: " .. char, vim.log.levels.WARN)
-		return
+		vim.notify("No buffer mapped to key: " .. char, vim.log.levels.WARN)
+		return char
 	end
 
-	vim.cmd("edit " .. file_path)
+	vim.cmd("edit! " .. file_path)
+	return false
 end
 
 local function set_table_entry(key, value, tbl)
@@ -32,32 +33,52 @@ local function set_table_entry(key, value, tbl)
 	return tbl
 end
 
-function M.mappings_init()
-	vim.keymap.set("n", "'", function()
-		local project_name = util.GetProjectRoot()
-		if project_name then
-			local file_map = c.get_project_keys(project_name)
-			local char = vim.fn.getcharstr()
+function M.mappings_init(config)
+	-- get file_map once then cache it
+	vim.api.nvim_create_autocmd("DirChanged", {
+		callback = function()
+			local project_name = util.GetProjectRoot()
+			if project_name then
+				M.file_map = c.get_project_keys(project_name)
+			end
+		end,
+	})
 
-			goto_file(char, file_map)
+	vim.keymap.set("n", config.jump_key, function()
+		local project_name = util.GetProjectRoot()
+		-- if inside project or not
+		if project_name then
+			-- if mark in current project or not
+			if M.file_map then
+				local ok, char = pcall(vim.fn.getcharstr)
+				-- if interrupted
+				if ok then
+					goto_file(char, M.file_map)
+                    -- TODO print the mark map after jump
+				end
+			else
+				print("buf_mark: you should mark something first :)")
+				return
+			end
 		else
+			print("buf_mark: sorry, no project detected! :(")
 			return
 		end
 	end, { noremap = true, silent = true })
 
-	vim.keymap.set("n", "M", function()
+	vim.keymap.set("n", config.marker_key, function()
 		local project_name = util.GetProjectRoot()
 		if project_name then
 			local char = vim.fn.getcharstr()
 			local full_filepath = vim.fn.expand("%:p")
 
-            local file_map = set_table_entry(char, full_filepath, M.file_map)
+			local file_map = set_table_entry(char, full_filepath, nil)
 			c.set_project_keys(project_name, file_map)
-			util.echoprint(string.format("[buf_mark]%s: %s", char, vim.fn.expand("%")))
+			util.echoprint(string.format("[buf_mark] %s: %s", char, vim.fn.expand("%")))
 		else
 			return
 		end
-	end)
+	end, { noremap = true, silent = true })
 end
 
 return M
