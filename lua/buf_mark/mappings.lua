@@ -16,13 +16,6 @@ local function goto_file(char, filemap)
 end
 
 local function set_table_entry(key, value, tbl)
-	if type(key) ~= "string" then
-		error("key must be a string")
-	end
-	if type(value) ~= "string" then
-		error("value must be a string")
-	end
-
 	if tbl == nil then
 		tbl = {}
 	elseif type(tbl) ~= "table" then
@@ -33,7 +26,10 @@ local function set_table_entry(key, value, tbl)
 	return tbl
 end
 
+-- initilize mappings
 function M.mappings_init(config)
+	local mappings = config.mappings
+
 	-- get file_map once then cache it
 	vim.api.nvim_create_autocmd("DirChanged", {
 		callback = function()
@@ -44,7 +40,8 @@ function M.mappings_init(config)
 		end,
 	})
 
-	vim.keymap.set("n", config.jump_key, function()
+	-- jump key
+	vim.keymap.set("n", mappings.jump_key, function()
 		local project_name = util.GetProjectRoot()
 		-- if inside project or not
 		if project_name then
@@ -54,7 +51,8 @@ function M.mappings_init(config)
 				-- if interrupted
 				if ok then
 					goto_file(char, M.file_map)
-                    -- TODO print the mark map after jump
+					util.inspect(M.file_map)
+					util.print_map(char, M.file_map, config.persist_marks)
 				end
 			else
 				print("buf_mark: you should mark something first :)")
@@ -66,7 +64,8 @@ function M.mappings_init(config)
 		end
 	end, { noremap = true, silent = true })
 
-	vim.keymap.set("n", config.marker_key, function()
+	-- mark key
+	vim.keymap.set("n", mappings.marker_key, function()
 		local project_name = util.GetProjectRoot()
 		if project_name then
 			local char = vim.fn.getcharstr()

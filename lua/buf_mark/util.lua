@@ -1,7 +1,7 @@
 local M = {}
 
 function M.inspect(var)
-    print(vim.inspect(var))
+	print(vim.inspect(var))
 end
 
 function M.GetProjectRoot(markers, path_or_bufnr)
@@ -22,48 +22,11 @@ function M.GetProjectRoot(markers, path_or_bufnr)
 	end
 end
 
-function M.Map(mode, lhs, rhs, opts)
-	if not lhs then
-		return
-	end
-    -- return vim.schedule_wrap(function()
-    -- end)()
-    vim.keymap.set(mode, lhs, rhs, opts)
-end
-
 function M.echoprint(str, hl)
 	if not hl then
 		hl = "MoreMsg"
 	end
 	vim.api.nvim_echo({ { str, hl } }, true, {})
-end
-
-function M.ShellCmd(cmd, on_success, on_error)
-	local ok, id = pcall(vim.fn.jobstart, cmd, {
-		stdout_buffered = true,
-		stderr_buffered = true,
-		on_exit = function(_, code)
-			if code == 0 then
-				if on_success then
-					on_success()
-				end
-			else
-				if on_error then
-					on_error()
-				end
-			end
-		end,
-	})
-	if not ok then
-		M.Notify("oz: something went wrong while executing cmd with jobstart().", "error", "Error")
-		return false
-	end
-end
-
-function M.ShellOutput(cmd)
-	local obj = vim.system({ "sh", "-c", cmd }, { text = true }):wait()
-	local sout = obj.stdout:gsub("^%s+", ""):gsub("%s+$", "")
-	return sout
 end
 
 function M.UserInput(msg, def)
@@ -85,6 +48,68 @@ function M.Notify(content, level, title)
 	}
 	level = level_map[level] or vim.log.levels.INFO
 	vim.notify(content, level, { title = title })
+end
+
+-- print map
+function M.print_map(char, tbl, ordered_keys)
+	local result = {}
+	local seen_keys = {}
+	local separator = " "
+
+	-- add sorted keys
+	for i, key in ipairs(ordered_keys) do
+		if tbl[key] ~= nil then
+			if key == char then
+				table.insert(result, { "[" .. key .. "]", "ModeMsg" })
+			else
+				table.insert(result, { "[" .. key .. "]" })
+			end
+			seen_keys[key] = true -- Mark this key as processed
+		else
+			table.insert(result, { "[" .. key .. "]", "ErrorMsg" }) -- Highlight missing keys
+		end
+
+		if i < #ordered_keys then
+			table.insert(result, { separator, nil }) -- Plain text separator
+		end
+	end
+
+	-- add any extra keys
+	local has_extra_keys = false
+	for key, _ in pairs(tbl) do
+		if not seen_keys[key] then
+			-- Add a separator if this is the first extra key
+			if not has_extra_keys then
+				table.insert(result, { separator, nil }) -- Separator before extra keys
+				has_extra_keys = true
+			end
+
+			-- Highlight the current key if it matches `char`
+			if key == char then
+				table.insert(result, { "[" .. key .. "]", "ModeMsg" })
+			else
+				table.insert(result, { "[" .. key .. "]" })
+			end
+
+			for next_key, _ in pairs(tbl) do
+				if not seen_keys[next_key] and next_key ~= key then
+					table.insert(result, { separator, nil })
+					break
+				end
+			end
+		end
+	end
+
+	-- Print the result
+	vim.api.nvim_echo(result, false, {})
+
+    -- remove the echo
+    vim.api.nvim_create_autocmd("InsertEnter", {
+        once = true,
+        callback = function()
+            vim.api.nvim_echo({ { "" } }, false, {})
+        end,
+    })
 end
 
 return M

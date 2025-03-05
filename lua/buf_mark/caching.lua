@@ -104,8 +104,7 @@ if not projects_data then
 	return
 end
 
--- Function to get specified keys for a given project.
--- keys should be an array of key names you want to retrieve.
+-- get keys
 function M.get_project_keys(project_name)
 	local project = projects_data[project_name]
 	if not project then
@@ -115,8 +114,7 @@ function M.get_project_keys(project_name)
 	return project
 end
 
--- Function to set/update any keys for a specific project.
--- new_keys is a table where keys are the property names and the values are their new values.
+-- set keys
 function M.set_project_keys(project_name, new_keys)
 	-- If the project does not exist, create a new table for it.
 	if not projects_data[project_name] then
