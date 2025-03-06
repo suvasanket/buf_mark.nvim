@@ -58,9 +58,6 @@ function M.mappings_init(config)
 				print("buf_mark: you should mark something first :)")
 				return
 			end
-		else
-			print("buf_mark: sorry, no project detected! :(")
-			return
 		end
 	end, { noremap = true, silent = true })
 

@@ -108,7 +108,6 @@ end
 function M.get_project_keys(project_name)
 	local project = projects_data[project_name]
 	if not project then
-		print("tip: you can mark buffer with M<char>")
 		return nil
 	end
 	return project
@@ -125,6 +124,7 @@ function M.set_project_keys(project_name, new_keys)
 	-- Loop through each key in new_keys and update the project.
 	for k, v in pairs(new_keys) do
 		project[k] = v
+        print(k)
 	end
 
 	-- Save the updated projects_data back to the JSON file.
@@ -132,6 +132,21 @@ function M.set_project_keys(project_name, new_keys)
 	if not ret then
 		util.Notify("Failed to update project '" .. project_name .. "'!", "error", "Buf_mark")
 	end
+end
+
+function M.remove_project_keys(project_name, keys)
+    if not projects_data[project_name] then
+        return nil
+    end
+    local project = projects_data[project_name]
+    for _, i in ipairs(keys) do
+        project[i] = nil
+    end
+
+    local ret = save_json(json_file, projects_data)
+    if not ret then
+        util.Notify("Failed to update project '" .. project_name .. "'!", "error", "Buf_mark")
+    end
 end
 
 return M

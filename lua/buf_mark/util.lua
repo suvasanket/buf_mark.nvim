@@ -57,20 +57,22 @@ function M.print_map(char, tbl, ordered_keys)
 	local separator = " "
 
 	-- add sorted keys
-	for i, key in ipairs(ordered_keys) do
-		if tbl[key] ~= nil then
-			if key == char then
-				table.insert(result, { "[" .. key .. "]", "ModeMsg" })
+	if ordered_keys then
+		for i, key in ipairs(ordered_keys) do
+			if tbl[key] ~= nil then
+				if key == char then
+					table.insert(result, { "[" .. key .. "]", "ModeMsg" })
+				else
+					table.insert(result, { "[" .. key .. "]" })
+				end
+				seen_keys[key] = true -- Mark this key as processed
 			else
-				table.insert(result, { "[" .. key .. "]" })
+				table.insert(result, { "[" .. key .. "]", "ErrorMsg" }) -- Highlight missing keys
 			end
-			seen_keys[key] = true -- Mark this key as processed
-		else
-			table.insert(result, { "[" .. key .. "]", "ErrorMsg" }) -- Highlight missing keys
-		end
 
-		if i < #ordered_keys then
-			table.insert(result, { separator, nil }) -- Plain text separator
+			if i < #ordered_keys then
+				table.insert(result, { separator, nil }) -- Plain text separator
+			end
 		end
 	end
 
@@ -103,13 +105,13 @@ function M.print_map(char, tbl, ordered_keys)
 	-- Print the result
 	vim.api.nvim_echo(result, false, {})
 
-    -- remove the echo
-    vim.api.nvim_create_autocmd("InsertEnter", {
-        once = true,
-        callback = function()
-            vim.api.nvim_echo({ { "" } }, false, {})
-        end,
-    })
+	-- remove the echo
+	vim.api.nvim_create_autocmd("InsertEnter", {
+		once = true,
+		callback = function()
+			vim.api.nvim_echo({ { "" } }, false, {})
+		end,
+	})
 end
 
 return M

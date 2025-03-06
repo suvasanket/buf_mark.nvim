@@ -2,7 +2,7 @@ local M = {}
 
 local defaults = {
 	mappings = {
-		jump_key = "'",
+		jump_key = ";",
 		marker_key = "M",
 	},
     persist_marks = { "a", "s", "d", "f" }
