@@ -55,7 +55,7 @@ function M.print_map(char, tbl, ordered_keys)
 	local result = {}
 	local seen_keys = {}
 	local separator = " "
-	vim.api.nvim_set_hl(0, "BufMarkMapUnmarked", { fg = "#606060", })
+	vim.api.nvim_set_hl(0, "BufMarkMapUnmarked", { fg = "#606060" })
 
 	-- add sorted keys
 	if ordered_keys then
@@ -113,6 +113,14 @@ function M.print_map(char, tbl, ordered_keys)
 			vim.api.nvim_echo({ { "" } }, false, {})
 		end,
 	})
+end
+
+function M.relative_path(full_path, short_path)
+    if not short_path then
+        return full_path
+    end
+	local rel_path = full_path:match("^" .. vim.pesc(short_path) .. "(.*)$")
+	return rel_path and rel_path:gsub("^/", "") or full_path
 end
 
 return M

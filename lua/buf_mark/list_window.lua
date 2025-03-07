@@ -44,8 +44,10 @@ end
 -- Helper: Build display lines from M.file_map_tbl using ordered keys.
 local function build_lines()
 	local lines = {}
+    local project_path = util.GetProjectRoot()
 	for i, key in ipairs(mark_order) do
-		lines[i] = M.file_map_tbl[key] or ""
+        local full_path = M.file_map_tbl[key] or ""
+		lines[i] = util.relative_path(full_path, project_path)
 	end
 	-- Ensure that the buffer has at least 'height' lines.
 	for i = #mark_order + 1, height do
@@ -182,7 +184,7 @@ function M.bufmarkls_window()
 	-- Re-compute the ordering and count.
 	mark_order, height = getKeys(M.file_map_tbl)
 	if height == 0 then
-		vim.api.nvim_err_writeln("No marks to display in file mapping.")
+		vim.api.nvim_err_writeln("Nothing to show try marking something first.")
 		return
 	end
 

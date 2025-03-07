@@ -15,6 +15,25 @@ local function goto_file(char, filemap)
 	return false
 end
 
+
+local function match_persist_marks(char_array, input_char)
+    local matched_chars = ""
+    local found = false
+
+    for _, char in ipairs(char_array) do
+        if string.lower(char) == string.lower(input_char) then
+            matched_chars = matched_chars .. char
+            found = true
+        end
+    end
+
+    if not found then
+        return input_char
+    end
+
+    return matched_chars
+end
+
 local function set_table_entry(key, value, tbl)
 	if tbl == nil then
 		tbl = {}
@@ -53,7 +72,7 @@ function M.mappings_init(config)
 				-- if not interrupted
 				if ok then
 					if char == " " then
-						vim.cmd("BufMarkList")
+                        pcall(vim.cmd, "BufMarkList")
 						return
 					end
 					goto_file(char, M.file_map)
@@ -70,12 +89,13 @@ function M.mappings_init(config)
 		local project_name = util.GetProjectRoot()
 		if project_name then
 			local ok, char = pcall(vim.fn.getcharstr)
-            if char == " " then
-                util.Notify("Please pick a char <Space> cannot be used.", "warn", "buf_mark")
-                return
-            end
+			if char == " " then
+				util.Notify("Please pick a char <Space> cannot be used.", "warn", "buf_mark")
+				return
+			end
 			if ok then
 				local full_filepath = vim.fn.expand("%:p")
+                char = match_persist_marks(config.persist_marks, char)
 
 				local file_map = set_table_entry(char, full_filepath, nil)
 				c.set_project_keys(project_name, file_map)
