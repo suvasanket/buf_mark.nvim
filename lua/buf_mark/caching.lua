@@ -124,7 +124,6 @@ function M.set_project_keys(project_name, new_keys)
 	-- Loop through each key in new_keys and update the project.
 	for k, v in pairs(new_keys) do
 		project[k] = v
-        print(k)
 	end
 
 	-- Save the updated projects_data back to the JSON file.

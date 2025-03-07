@@ -43,20 +43,20 @@ function M.mappings_init(config)
 	-- jump key
 	vim.keymap.set("n", mappings.jump_key, function()
 		local project_name = util.GetProjectRoot()
+        M.file_map = c.get_project_keys(project_name)
 		-- if inside project or not
 		if project_name then
 			-- if mark in current project or not
 			if M.file_map then
+                util.print_map(nil, M.file_map, config.persist_marks)
 				local ok, char = pcall(vim.fn.getcharstr)
 				-- if interrupted
 				if ok then
 					goto_file(char, M.file_map)
-					util.inspect(M.file_map)
 					util.print_map(char, M.file_map, config.persist_marks)
 				end
 			else
 				print("buf_mark: you should mark something first :)")
-				return
 			end
 		end
 	end, { noremap = true, silent = true })

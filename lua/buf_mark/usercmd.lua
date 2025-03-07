@@ -2,25 +2,26 @@ local M = {}
 local util = require("buf_mark.util")
 local c = require("buf_mark.caching")
 local mappings = require("buf_mark.mappings")
+local bm_ls = require("buf_mark.list_window")
 
 local function split_table(data, remove_keys)
-    local remove_lookup = {}
-    for _, key in ipairs(remove_keys or {}) do
-        remove_lookup[key] = true
-    end
+	local remove_lookup = {}
+	for _, key in ipairs(remove_keys or {}) do
+		remove_lookup[key] = true
+	end
 
-    local removed_map = {}
-    local remaining_keys = {}
+	local removed_map = {}
+	local remaining_keys = {}
 
-    for key, value in pairs(data or {}) do
-        if remove_lookup[key] then
-            removed_map[key] = value
-        else
-            table.insert(remaining_keys, key)
-        end
-    end
+	for key, value in pairs(data or {}) do
+		if remove_lookup[key] then
+			removed_map[key] = value
+		else
+			table.insert(remaining_keys, key)
+		end
+	end
 
-    return removed_map, remaining_keys
+	return removed_map, remaining_keys
 end
 
 local function print_deleted(array)
@@ -49,8 +50,8 @@ function M.usercmd_init(config)
 			if project_name then
 				local project_keys = c.get_project_keys(project_name)
 				local kept, remove = split_table(project_keys, config.persist_marks)
-                -- remove keys
-                c.remove_project_keys(project_name, remove)
+				-- remove keys
+				c.remove_project_keys(project_name, remove)
 
 				-- set local maps
 				mappings.file_map = kept
@@ -80,6 +81,12 @@ function M.usercmd_init(config)
 		nargs = "*",
 		bang = true,
 	})
+
+	-- bufmark list
+    vim.api.nvim_create_user_command("BufMarkList", function()
+        bm_ls.bufmarkls_window()
+        vim.api.nvim_echo({ { "r<char> will update mark, dd remove any entry.", "Comment" } }, false, {})
+    end, { desc = "open bufmark list" })
 end
 
 return M

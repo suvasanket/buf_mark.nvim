@@ -55,6 +55,7 @@ function M.print_map(char, tbl, ordered_keys)
 	local result = {}
 	local seen_keys = {}
 	local separator = " "
+	vim.api.nvim_set_hl(0, "BufMarkMapUnmarked", { fg = "#606060", })
 
 	-- add sorted keys
 	if ordered_keys then
@@ -67,7 +68,7 @@ function M.print_map(char, tbl, ordered_keys)
 				end
 				seen_keys[key] = true -- Mark this key as processed
 			else
-				table.insert(result, { "[" .. key .. "]", "ErrorMsg" }) -- Highlight missing keys
+				table.insert(result, { "[" .. key .. "]", "BufMarkMapUnmarked" })
 			end
 
 			if i < #ordered_keys then
