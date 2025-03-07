@@ -43,15 +43,19 @@ function M.mappings_init(config)
 	-- jump key
 	vim.keymap.set("n", mappings.jump_key, function()
 		local project_name = util.GetProjectRoot()
-        M.file_map = c.get_project_keys(project_name)
+		M.file_map = c.get_project_keys(project_name)
 		-- if inside project or not
 		if project_name then
 			-- if mark in current project or not
 			if M.file_map then
-                util.print_map(nil, M.file_map, config.persist_marks)
+				-- util.print_map(nil, M.file_map, config.persist_marks)
 				local ok, char = pcall(vim.fn.getcharstr)
-				-- if interrupted
+				-- if not interrupted
 				if ok then
+					if char == " " then
+						vim.cmd("BufMarkList")
+						return
+					end
 					goto_file(char, M.file_map)
 					util.print_map(char, M.file_map, config.persist_marks)
 				end
@@ -65,12 +69,18 @@ function M.mappings_init(config)
 	vim.keymap.set("n", mappings.marker_key, function()
 		local project_name = util.GetProjectRoot()
 		if project_name then
-			local char = vim.fn.getcharstr()
-			local full_filepath = vim.fn.expand("%:p")
+			local ok, char = pcall(vim.fn.getcharstr)
+            if char == " " then
+                util.Notify("Please pick a char <Space> cannot be used.", "warn", "buf_mark")
+                return
+            end
+			if ok then
+				local full_filepath = vim.fn.expand("%:p")
 
-			local file_map = set_table_entry(char, full_filepath, nil)
-			c.set_project_keys(project_name, file_map)
-			util.echoprint(string.format("[buf_mark] %s: %s", char, vim.fn.expand("%")))
+				local file_map = set_table_entry(char, full_filepath, nil)
+				c.set_project_keys(project_name, file_map)
+				util.echoprint(string.format("[buf_mark] %s: %s", char, vim.fn.expand("%")))
+			end
 		else
 			return
 		end

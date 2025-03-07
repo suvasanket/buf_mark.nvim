@@ -144,6 +144,25 @@ local function remove_mark_key(buf)
 	return ""
 end
 
+-- heleper: goto buffer
+local function goto_line_entry(lnum)
+	local cur_mark = mark_order[lnum]
+	if not cur_mark then
+		vim.api.nvim_err_writeln("No mark for line " .. lnum)
+		return
+	end
+
+	local cur_buf = M.file_map_tbl[cur_mark]
+	vim.cmd.wincmd("p")
+	vim.cmd("e " .. cur_buf)
+end
+
+-- goto buffer
+local function goto_mark()
+	local lnum = vim.api.nvim_win_get_cursor(0)[1]
+	goto_line_entry(lnum)
+end
+
 -- on_buf_unload: save the current state when the buffer is unloaded.
 ---@diagnostic disable-next-line: unused-local
 function M.on_bufmarkls_buf_unload(buf)
@@ -151,8 +170,8 @@ function M.on_bufmarkls_buf_unload(buf)
 	c.set_project_keys(project_name, M.file_map_tbl)
 	mappings.file_map = M.file_map_tbl
 
-    -- remove any prints
-    vim.api.nvim_echo({ { "" } }, false, {})
+	-- remove any prints
+	vim.api.nvim_echo({ { "" } }, false, {})
 end
 
 -- Open the sign window (values only) using virtual text for the keys.
@@ -175,6 +194,7 @@ function M.bufmarkls_window()
 
 	-- Create a bottom split of fixed height based on the number of entries.
 	vim.cmd("botright " .. height .. "split")
+    vim.cmd("resize 7")
 	local win = vim.api.nvim_get_current_win()
 	vim.api.nvim_win_set_option(win, "relativenumber", false)
 	vim.api.nvim_win_set_buf(win, buf)
@@ -206,6 +226,13 @@ function M.bufmarkls_window()
 	vim.api.nvim_buf_set_keymap(buf, "n", "dd", "", {
 		callback = function()
 			return remove_mark_key(buf)
+		end,
+		noremap = true,
+		silent = true,
+	})
+	vim.api.nvim_buf_set_keymap(buf, "n", "<cr>", "", {
+		callback = function()
+			return goto_mark()
 		end,
 		noremap = true,
 		silent = true,
