@@ -188,7 +188,7 @@ function M.Show_buf_keymaps()
 
     local height = math.min(#wrapped_lines, max_height)
     local width = (max_height > 100) and fixed_width or max_width + 2
-    local row = vim.o.lines - height - 4
+    local row = vim.o.lines - height
     local col = vim.o.columns - fixed_width - 2
 
     local win_opts = {

@@ -106,7 +106,7 @@ local function update_line_mark(buf, new_mark, lnum)
 		-- Swap only the file values associated with the two marks.
 		M.file_map_tbl[new_mark], M.file_map_tbl[old_mark] = old_value, M.file_map_tbl[new_mark]
 
-		echo(string.format("mark exists: therefore mark '%s' swapped with '%s'.", new_mark, old_mark))
+		echo(string.format("Mark already exist, so mark '%s' is swapped with '%s'.", old_mark, new_mark))
 	else
 		-- Otherwise, we update the file value for the current mark.
 		M.file_map_tbl[new_mark] = old_value
