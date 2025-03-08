@@ -13,15 +13,28 @@ local function refresh_file_map_tbl()
 	return tbl
 end
 
--- Ordered list of keys to display (each line i corresponds to key_order[i]).
-local function getKeys(tbl)
-	local keys = {}
-	local count = 0
-	for key, _ in pairs(tbl) do
-		table.insert(keys, key)
-		count = count + 1
+-- Ordered list of keys to display
+local function getKeys(tbl, sortedChars)
+	local result = {}
+	local seen = {}
+
+	if sortedChars then
+		for _, key in ipairs(sortedChars) do
+			if tbl[key] ~= nil then
+				table.insert(result, key)
+				seen[key] = true
+			end
+		end
 	end
-	return keys, count
+
+	for key, _ in pairs(tbl) do
+		if not seen[key] then
+			table.insert(result, key)
+		end
+	end
+
+	local count = #result
+	return result, count
 end
 
 -- Namespace for virtual text.
@@ -34,6 +47,7 @@ local height = 0
 
 -- Helper: Update virtual text for each line in buffer.
 local function update_virtual_text(buf)
+	-- Virtual text is tied to the marks (keys) which remain fixed.
 	vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
 	for i, key in ipairs(mark_order) do
 		local virt_text = { { "[" .. key .. "]", "@attribute" } }
@@ -41,12 +55,13 @@ local function update_virtual_text(buf)
 	end
 end
 
--- Helper: Build display lines from M.file_map_tbl using ordered keys.
+-- Helper: Build display lines using the file values in M.file_map_tbl,
+-- where the key used is fixed from mark_order.
 local function build_lines()
 	local lines = {}
-    local project_path = util.GetProjectRoot()
+	local project_path = util.GetProjectRoot()
 	for i, key in ipairs(mark_order) do
-        local full_path = M.file_map_tbl[key] or ""
+		local full_path = M.file_map_tbl[key] or ""
 		lines[i] = util.relative_path(full_path, project_path)
 	end
 	-- Ensure that the buffer has at least 'height' lines.
@@ -56,7 +71,7 @@ local function build_lines()
 	return lines
 end
 
--- update line mark
+-- update line mark (when replacing a mark with another)
 local function update_line_mark(buf, new_mark, lnum)
 	local old_mark = mark_order[lnum]
 	if not old_mark then
@@ -64,12 +79,11 @@ local function update_line_mark(buf, new_mark, lnum)
 		return
 	end
 
-	-- Get the current value from the line.
+	-- Get the current file for the mark.
 	local old_value = M.file_map_tbl[old_mark]
 
-	-- If new_key already exists, then swap the keys.
+	-- If new_mark exists already (has a file), then swap the values.
 	if M.file_map_tbl[new_mark] then
-		-- Find the line number where new_key is currently located.
 		local other_lnum = nil
 		for i, key in ipairs(mark_order) do
 			if key == new_mark then
@@ -79,36 +93,39 @@ local function update_line_mark(buf, new_mark, lnum)
 		end
 
 		if not other_lnum then
-			-- Should not happen if M.file_map_tbl[new_key] exists.
 			vim.api.nvim_err_writeln("Mark '" .. new_mark .. "' exists but cannot find its position.")
 			return
 		end
 
-		local new_value = M.file_map_tbl[new_mark]
-		-- Swap the keys in the table.
-		M.file_map_tbl[new_mark] = old_value
-		M.file_map_tbl[old_mark] = new_value
-
-		-- Swap the keys in the ordering.
-		mark_order[lnum] = new_mark
-		mark_order[other_lnum] = old_mark
+		-- Swap only the file values associated with the two marks.
+		M.file_map_tbl[new_mark], M.file_map_tbl[old_mark] = old_value, M.file_map_tbl[new_mark]
 
 		vim.api.nvim_out_write(
-			string.format("Swapped marks on lines %d and %d: '%s' and '%s'.\n", lnum, other_lnum, new_mark, old_mark)
+			string.format(
+				"Swapped file values for marks on lines %d and %d: '%s' and '%s'.\n",
+				lnum,
+				other_lnum,
+				new_mark,
+				old_mark
+			)
 		)
 	else
-		-- If the new key doesn't exist, then just update normally.
+		-- Otherwise, we update the file value for the current mark.
 		M.file_map_tbl[new_mark] = old_value
 		M.file_map_tbl[old_mark] = nil
+		-- And update the fixed mark for that line.
 		mark_order[lnum] = new_mark
-		vim.api.nvim_out_write(string.format("Updated mark %d: %s changed to %s.\n", lnum, old_mark, new_mark))
+		vim.api.nvim_out_write(
+			string.format("Updated mark on line %d: '%s' changed to '%s'.\n", lnum, old_mark, new_mark)
+		)
 	end
 
-	-- Update the virtual text in the buffer.
+	-- Refresh virtual text and file lines.
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, build_lines())
 	update_virtual_text(buf)
 end
 
--- Remove the key (entry) for a given line.
+-- Remove mark from a given line.
 local function remove_line_entry(buf, lnum)
 	local rem_key = mark_order[lnum]
 	if not rem_key then
@@ -118,24 +135,24 @@ local function remove_line_entry(buf, lnum)
 
 	M.file_map_tbl[rem_key] = nil
 
-	-- Recalculate key_order and height
+	-- Recompute mark_order and height.
 	mark_order, height = getKeys(M.file_map_tbl)
 
-	-- Refresh all lines in the buffer.
+	-- Update the buffer.
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, build_lines())
 	update_virtual_text(buf)
 	vim.api.nvim_out_write(string.format("Mark '%s' removed.\n", rem_key))
 end
 
--- update mark
+-- update mark key triggered by user input.
 local function update_mark_key(buf)
 	local char = vim.fn.nr2char(vim.fn.getchar())
-	local lnum = vim.api.nvim_win_get_cursor(0)[1] -- 1-indexed line number
+	local lnum = vim.api.nvim_win_get_cursor(0)[1]
 	update_line_mark(buf, char, lnum)
 	return ""
 end
 
--- remove mark
+-- remove mark triggered by dd mapping.
 local function remove_mark_key(buf)
 	if not vim.api.nvim_buf_get_option(0, "modifiable") then
 		vim.bo.modifiable = true
@@ -146,7 +163,7 @@ local function remove_mark_key(buf)
 	return ""
 end
 
--- heleper: goto buffer
+-- Helper: jump to file for the given line.
 local function goto_line_entry(lnum)
 	local cur_mark = mark_order[lnum]
 	if not cur_mark then
@@ -159,32 +176,76 @@ local function goto_line_entry(lnum)
 	vim.cmd("e " .. cur_buf)
 end
 
--- goto buffer
+-- goto file for current line.
 local function goto_mark()
 	local lnum = vim.api.nvim_win_get_cursor(0)[1]
 	goto_line_entry(lnum)
 end
 
--- on_buf_unload: save the current state when the buffer is unloaded.
+-- Swap the file values for two lines while leaving the persistent marks intact.
+local function swap_line(buf, idx1, idx2)
+	if not vim.api.nvim_buf_get_option(0, "modifiable") then
+		vim.bo.modifiable = true
+	end
+	if idx2 < 1 or idx2 > #mark_order then
+		vim.api.nvim_err_writeln("Cannot swap: out of bounds")
+		return
+	end
+
+	-- Get the marks for these lines.
+	local key1 = mark_order[idx1]
+	local key2 = mark_order[idx2]
+
+	-- Swap the file values for the two keys.
+	M.file_map_tbl[key1], M.file_map_tbl[key2] = M.file_map_tbl[key2], M.file_map_tbl[key1]
+
+	-- Refresh the displayed lines.
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, build_lines())
+	update_virtual_text(buf)
+	vim.bo.modifiable = true
+end
+
+-- Move the current line’s file value down (swap with next).
+local function move_down(buf)
+	local lnum = vim.api.nvim_win_get_cursor(0)[1]
+	if lnum >= #mark_order then
+		vim.api.nvim_err_writeln("Already at bottom; cannot move down.")
+		return ""
+	end
+	swap_line(buf, lnum, lnum + 1)
+	vim.cmd("norm! j")
+	return ""
+end
+
+-- Move the current line’s file value up (swap with previous).
+local function move_up(buf)
+	local lnum = vim.api.nvim_win_get_cursor(0)[1]
+	if lnum <= 1 then
+		vim.api.nvim_err_writeln("Already at top; cannot move up.")
+		return ""
+	end
+	swap_line(buf, lnum, lnum - 1)
+	vim.cmd("norm! k")
+	return ""
+end
+
+-- When the buffer unloads, store the current state.
 ---@diagnostic disable-next-line: unused-local
 function M.on_bufmarkls_buf_unload(buf)
 	local project_name = util.GetProjectRoot()
 	c.set_project_keys(project_name, M.file_map_tbl)
 	mappings.file_map = M.file_map_tbl
-
-	-- remove any prints
 	vim.api.nvim_echo({ { "" } }, false, {})
 end
 
--- Open the sign window (values only) using virtual text for the keys.
-function M.bufmarkls_window()
-	-- Refresh the mapping table every time.
+-- Open the buffer window.
+function M.bufmarkls_window(config)
+	-- Refresh the mapping.
 	M.file_map_tbl = refresh_file_map_tbl()
-
-	-- Re-compute the ordering and count.
-	mark_order, height = getKeys(M.file_map_tbl)
+	-- The order of marks remains fixed.
+	mark_order, height = getKeys(M.file_map_tbl, config.persist_marks)
 	if height == 0 then
-		vim.api.nvim_err_writeln("Nothing to show try marking something first.")
+		vim.api.nvim_err_writeln("Nothing to show; try marking something first.")
 		return
 	end
 
@@ -194,43 +255,50 @@ function M.bufmarkls_window()
 		return
 	end
 
-	-- Create a bottom split of fixed height based on the number of entries.
+	-- Create a bottom split for the display.
 	vim.cmd("botright " .. height .. "split")
-    vim.cmd("resize 7")
+	vim.cmd("resize 7")
 	local win = vim.api.nvim_get_current_win()
 	vim.api.nvim_win_set_option(win, "relativenumber", false)
 	vim.api.nvim_win_set_buf(win, buf)
 
-	-- Fill the buffer with built lines from current mapping.
+	-- Fill the buffer with file values according to mark_order.
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, build_lines())
 
-	-- Mark our buffer for identification if needed.
+	-- Mark the buffer buffer as a special window.
 	vim.api.nvim_buf_set_var(buf, "is_BufMarkList_window", true)
 
-	-- Set the buffer as unmodifiable.
+	-- Set buffer options.
 	vim.api.nvim_buf_set_option(buf, "modifiable", false)
 	vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
 	vim.api.nvim_buf_set_option(buf, "swapfile", false)
 
-	-- Attach virtual text to display keys.
+	-- Attach the virtual text (marks remain fixed).
 	update_virtual_text(buf)
 
-	-- Buffer-local mappings:
-	local opts = { noremap = true, silent = true }
+	-- Buffer-local mappings.
 	vim.api.nvim_buf_set_keymap(buf, "n", "r", "", {
 		callback = function()
 			return update_mark_key(buf)
 		end,
 		noremap = true,
 		silent = true,
+		desc = "change mark.",
 	})
-	vim.api.nvim_buf_set_keymap(buf, "n", "q", ":close<cr>", opts)
+	vim.api.nvim_buf_set_keymap(
+		buf,
+		"n",
+		"q",
+		":close<cr>",
+		{ noremap = true, silent = true, desc = "close list window." }
+	)
 	vim.api.nvim_buf_set_keymap(buf, "n", "dd", "", {
 		callback = function()
 			return remove_mark_key(buf)
 		end,
 		noremap = true,
 		silent = true,
+		desc = "delete current entry under-cursor.",
 	})
 	vim.api.nvim_buf_set_keymap(buf, "n", "<cr>", "", {
 		callback = function()
@@ -238,9 +306,35 @@ function M.bufmarkls_window()
 		end,
 		noremap = true,
 		silent = true,
+		desc = "open current entry under-cursor.",
+	})
+	-- New key mappings for swapping lines:
+	vim.api.nvim_buf_set_keymap(buf, "n", "<C-n>", "", {
+		callback = function()
+			return move_down(buf)
+		end,
+		noremap = true,
+		silent = true,
+		desc = "move current entry down.",
+	})
+	vim.api.nvim_buf_set_keymap(buf, "n", "<C-p>", "", {
+		callback = function()
+			return move_up(buf)
+		end,
+		noremap = true,
+		silent = true,
+		desc = "move current entry up.",
+	})
+	vim.api.nvim_buf_set_keymap(buf, "n", "g?", "", {
+		callback = function()
+			return util.Show_buf_keymaps()
+		end,
+		noremap = true,
+		silent = true,
+		desc = "show help window.",
 	})
 
-	-- Autocommands
+	-- Save state on unload.
 	vim.api.nvim_create_autocmd("BufUnload", {
 		buffer = buf,
 		callback = function(args)

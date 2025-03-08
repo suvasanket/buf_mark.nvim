@@ -84,8 +84,8 @@ function M.usercmd_init(config)
 
 	-- bufmark list
     vim.api.nvim_create_user_command("BufMarkList", function()
-        bm_ls.bufmarkls_window()
-        vim.api.nvim_echo({ { "r<char> will update mark, dd remove any entry.", "Comment" } }, false, {})
+        bm_ls.bufmarkls_window(config)
+        vim.api.nvim_echo({ { "press g? to see all available keymaps.", "Comment" } }, false, {})
     end, { desc = "open bufmark list" })
 end
 
