@@ -122,13 +122,23 @@ end
 
 -- Remove mark from a given line.
 local function remove_line_entry(buf, lnum)
-	local rem_key = mark_order[lnum]
-	if not rem_key then
-		echo("No mark for line " .. lnum)
-		return
-	end
+	if type(lnum) == "table" then
+		for _, j in ipairs(lnum) do
+			local rk = mark_order[j]
+			if not rk then
+				return
+			end
+			M.file_map_tbl[rk] = nil
+		end
+	else
+		local rem_key = mark_order[lnum]
+		if not rem_key then
+			echo("No mark for line " .. lnum)
+			return
+		end
 
-	M.file_map_tbl[rem_key] = nil
+		M.file_map_tbl[rem_key] = nil
+	end
 
 	-- Recompute mark_order and height.
 	mark_order, height = getKeys(M.file_map_tbl)
@@ -136,7 +146,7 @@ local function remove_line_entry(buf, lnum)
 	-- Update the buffer.
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, build_lines())
 	update_virtual_text(buf)
-	echo(string.format("Mark '%s' removed.", rem_key))
+	-- echo(string.format("Mark '%s' removed.", rem_key))
 end
 
 -- update mark key triggered by user input.
@@ -154,6 +164,24 @@ local function remove_mark_key(buf)
 	end
 	local lnum = vim.api.nvim_win_get_cursor(0)[1]
 	remove_line_entry(buf, lnum)
+	vim.bo.modifiable = false
+	return ""
+end
+
+-- remove mark in visual mode
+local function remove_mark_key_v(buf)
+	if not vim.api.nvim_buf_get_option(0, "modifiable") then
+		vim.bo.modifiable = true
+	end
+
+	local start_line = vim.fn.line("v")
+	local end_line = vim.fn.line(".")
+	local line_numbers = {}
+	for i = start_line, end_line do
+		table.insert(line_numbers, i)
+	end
+	remove_line_entry(buf, line_numbers)
+    vim.api.nvim_input("<Esc>")
 	vim.bo.modifiable = false
 	return ""
 end
@@ -182,12 +210,12 @@ local function open_entry_in_prevwin()
 	open_entry(lnum)
 end
 local function open_entry_in_split()
-    local lnum = vim.api.nvim_win_get_cursor(0)[1]
-    open_entry(lnum, "split")
+	local lnum = vim.api.nvim_win_get_cursor(0)[1]
+	open_entry(lnum, "split")
 end
 local function open_entry_in_vsplit()
-    local lnum = vim.api.nvim_win_get_cursor(0)[1]
-    open_entry(lnum, "vert")
+	local lnum = vim.api.nvim_win_get_cursor(0)[1]
+	open_entry(lnum, "vert")
 end
 
 -- Swap the file values for two lines while leaving the persistent marks intact.
@@ -308,6 +336,14 @@ function M.bufmarkls_window(config)
 		silent = true,
 		desc = "delete current entry under-cursor.",
 	})
+	vim.api.nvim_buf_set_keymap(buf, "x", "d", "", {
+		callback = function()
+			return remove_mark_key_v(buf)
+		end,
+		noremap = true,
+		silent = true,
+		desc = "delete current entry under-cursor.",
+	})
 	vim.api.nvim_buf_set_keymap(buf, "n", "<cr>", "", {
 		callback = function()
 			return open_entry_in_prevwin()
@@ -316,22 +352,22 @@ function M.bufmarkls_window(config)
 		silent = true,
 		desc = "open current entry under-cursor.",
 	})
-    vim.api.nvim_buf_set_keymap(buf, "n", "<C-v>", "", {
-        callback = function()
-            return open_entry_in_vsplit()
-        end,
-        noremap = true,
-        silent = true,
-        desc = "open current entry in vertical split.",
-    })
-    vim.api.nvim_buf_set_keymap(buf, "n", "<C-s>", "", {
-        callback = function()
-            return open_entry_in_split()
-        end,
-        noremap = true,
-        silent = true,
-        desc = "open current entry in horizontal split.",
-    })
+	vim.api.nvim_buf_set_keymap(buf, "n", "<C-v>", "", {
+		callback = function()
+			return open_entry_in_vsplit()
+		end,
+		noremap = true,
+		silent = true,
+		desc = "open current entry in vertical split.",
+	})
+	vim.api.nvim_buf_set_keymap(buf, "n", "<C-s>", "", {
+		callback = function()
+			return open_entry_in_split()
+		end,
+		noremap = true,
+		silent = true,
+		desc = "open current entry in horizontal split.",
+	})
 	-- New key mappings for swapping lines:
 	vim.api.nvim_buf_set_keymap(buf, "n", "<C-n>", "", {
 		callback = function()

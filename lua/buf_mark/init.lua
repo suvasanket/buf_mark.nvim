@@ -13,7 +13,11 @@ function M.setup(opts)
 	M.config = vim.tbl_deep_extend("force", defaults, opts)
 
 	-- Initialize mappings
-    require("buf_mark.mappings").mappings_init(M.config)
+	vim.api.nvim_create_autocmd("DirChanged", {
+		callback = function()
+			require("buf_mark.mappings").mappings_init(M.config)
+		end,
+	})
 
 	-- Initialize usercmd
 	require("buf_mark.usercmd").usercmd_init(M.config)

@@ -173,7 +173,7 @@ function M.Show_buf_keymaps()
 
     -- floating window dimensions and position [ai]
     local fixed_width = 55
-    local max_height = 15
+    local max_height = 10
 
     local wrapped_lines = {}
     for _, line in ipairs(keymaps) do
