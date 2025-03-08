@@ -53,8 +53,11 @@ local function update_virtual_text(buf)
 	-- Virtual text is tied to the marks (keys) which remain fixed.
 	vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
 	for i, key in ipairs(mark_order) do
-		local virt_text = { { "[" .. key .. "]", "@attribute" } }
-		vim.api.nvim_buf_set_virtual_text(buf, ns_id, i - 1, virt_text, {})
+		local virt_text = { { " " .. key .. " ", "@attribute" } }
+		vim.api.nvim_buf_set_extmark(buf, ns_id, i - 1, 0, {
+			virt_text = virt_text,
+            virt_text_pos = "inline",
+		})
 	end
 end
 
@@ -181,7 +184,7 @@ local function remove_mark_key_v(buf)
 		table.insert(line_numbers, i)
 	end
 	remove_line_entry(buf, line_numbers)
-    vim.api.nvim_input("<Esc>")
+	vim.api.nvim_input("<Esc>")
 	vim.bo.modifiable = false
 	return ""
 end
@@ -295,7 +298,11 @@ function M.bufmarkls_window(config)
 	vim.cmd("botright " .. height .. "split")
 	vim.cmd("resize 7")
 	local win = vim.api.nvim_get_current_win()
+    vim.api.nvim_echo({ { "press g? to see all available keymaps.", "Comment" } }, false, {})
+
+    vim.api.nvim_win_set_option(win, "number", false)
 	vim.api.nvim_win_set_option(win, "relativenumber", false)
+	vim.api.nvim_win_set_option(win, "laststatus", 0)
 	vim.api.nvim_win_set_buf(win, buf)
 
 	-- Fill the buffer with file values according to mark_order.
@@ -399,6 +406,7 @@ function M.bufmarkls_window(config)
 		buffer = buf,
 		callback = function(args)
 			M.on_bufmarkls_buf_unload(args.buf)
+            vim.o.laststatus = 2
 		end,
 	})
 end
