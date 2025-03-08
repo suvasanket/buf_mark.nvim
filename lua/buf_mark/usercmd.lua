@@ -1,4 +1,5 @@
 local M = {}
+
 local util = require("buf_mark.util")
 local c = require("buf_mark.caching")
 local mappings = require("buf_mark.mappings")

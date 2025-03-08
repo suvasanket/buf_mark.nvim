@@ -3,6 +3,9 @@ local M = {}
 local c = require("buf_mark.caching")
 local util = require("buf_mark.util")
 local mappings = require("buf_mark.mappings")
+local echo = function(str)
+	vim.api.nvim_echo({ { str, "Comment" } }, false, {})
+end
 
 -- Refresh the file mapping table from mappings.file_map or from cache.
 local function refresh_file_map_tbl()
@@ -75,7 +78,7 @@ end
 local function update_line_mark(buf, new_mark, lnum)
 	local old_mark = mark_order[lnum]
 	if not old_mark then
-		vim.api.nvim_err_writeln("No mark for this line")
+		echo("No mark for this line")
 		return
 	end
 
@@ -93,35 +96,27 @@ local function update_line_mark(buf, new_mark, lnum)
 		end
 
 		if not other_lnum then
-			vim.api.nvim_err_writeln("Mark '" .. new_mark .. "' exists but cannot find its position.")
+			echo("Mark '" .. new_mark .. "' exists but cannot find its position.")
 			return
 		end
 
 		-- Swap only the file values associated with the two marks.
 		M.file_map_tbl[new_mark], M.file_map_tbl[old_mark] = old_value, M.file_map_tbl[new_mark]
 
-		vim.api.nvim_out_write(
-			string.format(
-				"Swapped file values for marks on lines %d and %d: '%s' and '%s'.\n",
-				lnum,
-				other_lnum,
-				new_mark,
-				old_mark
-			)
-		)
+		echo(string.format("mark exists: therefore mark '%s' swapped with '%s'.", new_mark, old_mark))
 	else
 		-- Otherwise, we update the file value for the current mark.
 		M.file_map_tbl[new_mark] = old_value
 		M.file_map_tbl[old_mark] = nil
 		-- And update the fixed mark for that line.
 		mark_order[lnum] = new_mark
-		vim.api.nvim_out_write(
-			string.format("Updated mark on line %d: '%s' changed to '%s'.\n", lnum, old_mark, new_mark)
-		)
+		echo(string.format("Updated mark on line %d: '%s' changed to '%s'.", lnum, old_mark, new_mark))
 	end
 
 	-- Refresh virtual text and file lines.
+	vim.bo.modifiable = true
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, build_lines())
+	vim.bo.modifiable = false
 	update_virtual_text(buf)
 end
 
@@ -129,7 +124,7 @@ end
 local function remove_line_entry(buf, lnum)
 	local rem_key = mark_order[lnum]
 	if not rem_key then
-		vim.api.nvim_err_writeln("No mark for line " .. lnum)
+		echo("No mark for line " .. lnum)
 		return
 	end
 
@@ -141,7 +136,7 @@ local function remove_line_entry(buf, lnum)
 	-- Update the buffer.
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, build_lines())
 	update_virtual_text(buf)
-	vim.api.nvim_out_write(string.format("Mark '%s' removed.\n", rem_key))
+	echo(string.format("Mark '%s' removed.", rem_key))
 end
 
 -- update mark key triggered by user input.
@@ -164,7 +159,7 @@ local function remove_mark_key(buf)
 end
 
 -- Helper: jump to file for the given line.
-local function goto_line_entry(lnum)
+local function open_entry(lnum, type)
 	local cur_mark = mark_order[lnum]
 	if not cur_mark then
 		vim.api.nvim_err_writeln("No mark for line " .. lnum)
@@ -173,13 +168,26 @@ local function goto_line_entry(lnum)
 
 	local cur_buf = M.file_map_tbl[cur_mark]
 	vim.cmd.wincmd("p")
+	if type == "split" then
+		vim.cmd.wincmd("s")
+	elseif type == "vert" then
+		vim.cmd.wincmd("v")
+	end
 	vim.cmd("e " .. cur_buf)
 end
 
 -- goto file for current line.
-local function goto_mark()
+local function open_entry_in_prevwin()
 	local lnum = vim.api.nvim_win_get_cursor(0)[1]
-	goto_line_entry(lnum)
+	open_entry(lnum)
+end
+local function open_entry_in_split()
+    local lnum = vim.api.nvim_win_get_cursor(0)[1]
+    open_entry(lnum, "split")
+end
+local function open_entry_in_vsplit()
+    local lnum = vim.api.nvim_win_get_cursor(0)[1]
+    open_entry(lnum, "vert")
 end
 
 -- Swap the file values for two lines while leaving the persistent marks intact.
@@ -302,12 +310,28 @@ function M.bufmarkls_window(config)
 	})
 	vim.api.nvim_buf_set_keymap(buf, "n", "<cr>", "", {
 		callback = function()
-			return goto_mark()
+			return open_entry_in_prevwin()
 		end,
 		noremap = true,
 		silent = true,
 		desc = "open current entry under-cursor.",
 	})
+    vim.api.nvim_buf_set_keymap(buf, "n", "<C-v>", "", {
+        callback = function()
+            return open_entry_in_vsplit()
+        end,
+        noremap = true,
+        silent = true,
+        desc = "open current entry in vertical split.",
+    })
+    vim.api.nvim_buf_set_keymap(buf, "n", "<C-s>", "", {
+        callback = function()
+            return open_entry_in_split()
+        end,
+        noremap = true,
+        silent = true,
+        desc = "open current entry in horizontal split.",
+    })
 	-- New key mappings for swapping lines:
 	vim.api.nvim_buf_set_keymap(buf, "n", "<C-n>", "", {
 		callback = function()
