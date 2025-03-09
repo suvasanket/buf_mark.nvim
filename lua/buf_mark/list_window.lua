@@ -4,8 +4,6 @@ local c = require("buf_mark.caching")
 local util = require("buf_mark.util")
 local mappings = require("buf_mark.mappings")
 
-vim.api.nvim_set_hl(0, "BufMarkMapListMsg", { fg = "#606060", italic = true })
-vim.api.nvim_set_hl(0, "BufMarkMapListMarks", { fg = "#00FF9c", bold = true })
 local echo = function(str)
 	vim.api.nvim_echo({ { str, "BufMarkMapListMsg" } }, false, {})
 end
@@ -55,6 +53,7 @@ local height = 0
 local function update_virtual_text(buf)
 	-- Virtual text is tied to the marks (keys) which remain fixed.
 	vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
+    vim.api.nvim_set_hl(0, "BufMarkMapListMarks", { fg = "#00FF9c", bold = true })
 	for i, key in ipairs(mark_order) do
 		local virt_text = { { " " .. key .. " ", "BufMarkMapListMarks" } }
 		vim.api.nvim_buf_set_extmark(buf, ns_id, i - 1, 0, {
@@ -301,6 +300,7 @@ function M.bufmarkls_window(config)
 	vim.cmd("botright " .. height .. "split")
 	vim.cmd("resize 7")
 	local win = vim.api.nvim_get_current_win()
+    vim.api.nvim_set_hl(0, "BufMarkMapListMsg", { fg = "#606060", italic = true })
     vim.api.nvim_echo({ { "press g? to see all available keymaps.", "BufMarkMapListMsg" } }, false, {})
 
     vim.api.nvim_win_set_option(win, "number", false)
