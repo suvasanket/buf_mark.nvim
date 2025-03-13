@@ -29,5 +29,9 @@ default:
         marker_key = "M",
     },
     persist_marks = { "a", "s", "d", "f" },
+
+    -- not related to this plugin but its here anyway.
+    smart_editcmd = true, -- smarter :e
+    override_editcmd = true, -- override :e
 }
 ```

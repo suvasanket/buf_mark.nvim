@@ -6,6 +6,8 @@ local defaults = {
 		marker_key = "M",
 	},
 	persist_marks = { "a", "s", "d", "f" },
+	smart_editcmd = true,
+    override_editcmd = true,
 }
 
 function M.setup(opts)
@@ -13,7 +15,7 @@ function M.setup(opts)
 	M.config = vim.tbl_deep_extend("force", defaults, opts)
 
 	-- Initialize mappings
-    require("buf_mark.mappings").mappings_init(M.config)
+	require("buf_mark.mappings").mappings_init(M.config)
 
 	-- Initialize usercmd
 	require("buf_mark.usercmd").usercmd_init(M.config)

@@ -4,6 +4,7 @@ local util = require("buf_mark.util")
 local c = require("buf_mark.caching")
 local mappings = require("buf_mark.mappings")
 local bm_ls = require("buf_mark.list_window")
+local c_edit = require("buf_mark.smart_edit")
 
 local function split_table(data, remove_keys)
 	local remove_lookup = {}
@@ -84,9 +85,25 @@ function M.usercmd_init(config)
 	})
 
 	-- bufmark list
-    vim.api.nvim_create_user_command("BufMarkList", function()
-        bm_ls.bufmarkls_window(config)
-    end, { desc = "open bufmark list" })
+	vim.api.nvim_create_user_command("BufMarkList", function()
+		bm_ls.bufmarkls_window(config)
+	end, { desc = "open bufmark list" })
+
+	-- custom edit
+	if config.smart_editcmd then
+		vim.api.nvim_create_user_command("Edit", function(opts)
+			c_edit.custom_edit(opts.args)
+		end, { nargs = 1, complete = c_edit.completion })
+		vim.api.nvim_create_user_command("E", function(opts)
+			c_edit.custom_edit(opts.args)
+		end, { nargs = 1, complete = c_edit.completion })
+
+		if config.override_editcmd then
+			vim.cmd([[
+            cnoreabbrev <expr> e getcmdline() == 'e' ? 'E' : 'e'
+            ]])
+		end
+	end
 end
 
 return M
