@@ -6,8 +6,8 @@ local defaults = {
 		marker_key = "M",
 	},
 	persist_marks = { "a", "s", "d", "f" },
-	smart_editcmd = true,
-    override_editcmd = true,
+	edit_buffer = true,
+    edit_buffer_unmatch_behaviour = 'notify', -- |edit, buffer, notify|
 }
 
 function M.setup(opts)

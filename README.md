@@ -30,8 +30,8 @@ default:
     },
     persist_marks = { "a", "s", "d", "f" },
 
-    -- not related to this plugin but its here anyway.
-    smart_editcmd = true, -- smarter :e
-    override_editcmd = true, -- override :e
+    -- :EditBuffer (Not plugin-specific, but it's included here.)
+    edit_buffer = true, -- its a combination of :e and :buffer and better
+    edit_buffer_unmatch_behaviour = 'notify', -- |edit, buffer, notify|
 }
 ```

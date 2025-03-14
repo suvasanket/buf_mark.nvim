@@ -90,19 +90,13 @@ function M.usercmd_init(config)
 	end, { desc = "open bufmark list" })
 
 	-- custom edit
-	if config.smart_editcmd then
-		vim.api.nvim_create_user_command("Edit", function(opts)
-			c_edit.custom_edit(opts.args)
+	if config.edit_buffer then
+		vim.api.nvim_create_user_command("EditBuffer", function(opts)
+			c_edit.edit_buffer_init(opts.args, { behaviour = config.edit_buffer_unmatch_behaviour })
 		end, { nargs = 1, complete = c_edit.completion })
-		vim.api.nvim_create_user_command("E", function(opts)
-			c_edit.custom_edit(opts.args)
-		end, { nargs = 1, complete = c_edit.completion })
-
-		if config.override_editcmd then
-			vim.cmd([[
-            cnoreabbrev <expr> e getcmdline() == 'e' ? 'E' : 'e'
-            ]])
-		end
+        vim.api.nvim_create_user_command("E", function(opts)
+            c_edit.edit_buffer_init(opts.args, { behaviour = config.edit_buffer_unmatch_behaviour })
+        end, { nargs = 1, complete = c_edit.completion })
 	end
 end
 
