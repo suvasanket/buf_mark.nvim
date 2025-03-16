@@ -218,4 +218,26 @@ function M.Show_buf_keymaps()
 	vim.api.nvim_buf_set_keymap(temp_buf, "n", "q", "<cmd>close<CR>", { noremap = true, silent = true })
 end
 
+function M.join_arr(tbl1, tbl2)
+    local result = {}
+    local seen = {}
+
+    local function addToResult(element)
+        if not seen[element] then
+            seen[element] = true
+            table.insert(result, element)
+        end
+    end
+
+    for _, value in ipairs(tbl1) do
+        addToResult(value)
+    end
+
+    for _, value in ipairs(tbl2) do
+        addToResult(value)
+    end
+
+    return result
+end
+
 return M
