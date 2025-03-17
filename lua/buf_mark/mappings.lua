@@ -4,15 +4,19 @@ local util = require("buf_mark.util")
 
 M.file_map = {}
 
-local function goto_file(char, filemap)
+local function goto_file(char, filemap, project_name)
 	local file_path = filemap[char]
 	if not file_path then
-		vim.notify("No buffer mapped to key: " .. char, vim.log.levels.WARN)
-		return char
+        util.Notify("No buffer mapped to key: " .. char, "warn", "buf_mark")
 	end
 
-	vim.cmd("edit! " .. file_path)
-	return false
+    if vim.fn.filereadable(file_path) == 1 then
+        vim.cmd("edit! " .. file_path)
+    else
+        filemap[char] = nil
+        c.set_project_keys(project_name, filemap)
+        util.Notify("It seems file has been moved or deleted.", "warn", "buf_mark")
+    end
 end
 
 local function match_persist_marks(char_array, input_char)
@@ -74,7 +78,7 @@ function M.mappings_init(config)
 						pcall(vim.cmd, "BufMarkList")
 						return
 					end
-					goto_file(char, M.file_map)
+					goto_file(char, M.file_map, project_name)
 					util.print_map(char, M.file_map, config.persist_marks)
 				end
 			else
