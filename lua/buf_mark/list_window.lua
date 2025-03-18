@@ -4,6 +4,9 @@ local c = require("buf_mark.caching")
 local util = require("buf_mark.util")
 local mappings = require("buf_mark.mappings")
 
+local list_buf = nil
+local list_win = nil
+
 local echo = function(str)
 	vim.api.nvim_echo({ { str, "BufMarkMapListMsg" } }, false, {})
 end
@@ -53,12 +56,12 @@ local height = 0
 local function update_virtual_text(buf)
 	-- Virtual text is tied to the marks (keys) which remain fixed.
 	vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
-    vim.api.nvim_set_hl(0, "BufMarkMapListMarks", { fg = "#00FF9c", bold = true })
+	vim.api.nvim_set_hl(0, "BufMarkMapListMarks", { fg = "#00FF9c", bold = true })
 	for i, key in ipairs(mark_order) do
 		local virt_text = { { " " .. key .. " ", "BufMarkMapListMarks" } }
 		vim.api.nvim_buf_set_extmark(buf, ns_id, i - 1, 0, {
 			virt_text = virt_text,
-            virt_text_pos = "inline",
+			virt_text_pos = "inline",
 		})
 	end
 end
@@ -290,126 +293,140 @@ function M.bufmarkls_window(config)
 		return
 	end
 
-	local buf = vim.api.nvim_create_buf(false, true)
-	if not buf then
-		vim.api.nvim_err_writeln("Failed to create buffer")
-		return
+	if list_buf == nil or not vim.api.nvim_win_is_valid(list_win) then
+		list_buf = vim.api.nvim_create_buf(false, true)
+		if not list_buf then
+			vim.api.nvim_err_writeln("Failed to create buffer")
+			return
+		end
+
+		-- Create a bottom split for the display.
+		vim.cmd("botright " .. height .. "split")
+		vim.cmd("resize 7")
+		list_win = vim.api.nvim_get_current_win()
+		vim.api.nvim_set_hl(0, "BufMarkMapListMsg", { fg = "#606060", italic = true })
+		vim.api.nvim_echo({ { "press g? to see all available keymaps.", "BufMarkMapListMsg" } }, false, {})
+
+		vim.api.nvim_win_set_option(list_win, "number", false)
+		vim.api.nvim_win_set_option(list_win, "relativenumber", false)
+		vim.api.nvim_win_set_option(list_win, "laststatus", 0)
+		vim.api.nvim_win_set_buf(list_win, list_buf)
+		vim.api.nvim_buf_set_option(list_buf, "bufhidden", "wipe")
+
+		-- Fill the buffer with file values according to mark_order.
+		vim.api.nvim_buf_set_lines(list_buf, 0, -1, false, build_lines())
+
+		-- Mark the buffer buffer as a special window.
+		vim.api.nvim_buf_set_var(list_buf, "is_BufMarkList_window", true)
+
+		-- Set buffer options.
+		vim.api.nvim_buf_set_option(list_buf, "modifiable", false)
+		vim.api.nvim_buf_set_option(list_buf, "bufhidden", "wipe")
+		vim.api.nvim_buf_set_option(list_buf, "swapfile", false)
+
+		-- auto reset buf win var
+		vim.api.nvim_create_autocmd("BufDelete", {
+			buffer = list_buf,
+			callback = function()
+				list_buf = nil
+				list_win = nil
+			end,
+		})
+
+		-- Attach the virtual text (marks remain fixed).
+		update_virtual_text(list_buf)
+
+		-- Buffer-local mappings.
+		vim.api.nvim_buf_set_keymap(list_buf, "n", "r", "", {
+			callback = function()
+				return update_mark_key(list_buf)
+			end,
+			noremap = true,
+			silent = true,
+			desc = "change mark.",
+		})
+		vim.api.nvim_buf_set_keymap(
+			list_buf,
+			"n",
+			"q",
+			":close<cr>",
+			{ noremap = true, silent = true, desc = "close list window." }
+		)
+		vim.api.nvim_buf_set_keymap(list_buf, "n", "dd", "", {
+			callback = function()
+				return remove_mark_key(list_buf)
+			end,
+			noremap = true,
+			silent = true,
+			desc = "delete current entry under-cursor.",
+		})
+		vim.api.nvim_buf_set_keymap(list_buf, "x", "d", "", {
+			callback = function()
+				return remove_mark_key_v(list_buf)
+			end,
+			noremap = true,
+			silent = true,
+			desc = "delete current entry under-cursor.",
+		})
+		vim.api.nvim_buf_set_keymap(list_buf, "n", "<cr>", "", {
+			callback = function()
+				return open_entry_in_prevwin()
+			end,
+			noremap = true,
+			silent = true,
+			desc = "open current entry under-cursor.",
+		})
+		vim.api.nvim_buf_set_keymap(list_buf, "n", "<C-v>", "", {
+			callback = function()
+				return open_entry_in_vsplit()
+			end,
+			noremap = true,
+			silent = true,
+			desc = "open current entry in vertical split.",
+		})
+		vim.api.nvim_buf_set_keymap(list_buf, "n", "<C-s>", "", {
+			callback = function()
+				return open_entry_in_split()
+			end,
+			noremap = true,
+			silent = true,
+			desc = "open current entry in horizontal split.",
+		})
+		-- New key mappings for swapping lines:
+		vim.api.nvim_buf_set_keymap(list_buf, "n", "<C-n>", "", {
+			callback = function()
+				return move_down(list_buf)
+			end,
+			noremap = true,
+			silent = true,
+			desc = "move current entry down.",
+		})
+		vim.api.nvim_buf_set_keymap(list_buf, "n", "<C-p>", "", {
+			callback = function()
+				return move_up(list_buf)
+			end,
+			noremap = true,
+			silent = true,
+			desc = "move current entry up.",
+		})
+		vim.api.nvim_buf_set_keymap(list_buf, "n", "g?", "", {
+			callback = function()
+				return util.Show_buf_keymaps()
+			end,
+			noremap = true,
+			silent = true,
+			desc = "show help window.",
+		})
+	else
+		vim.api.nvim_set_current_win(list_win)
 	end
-
-	-- Create a bottom split for the display.
-	vim.cmd("botright " .. height .. "split")
-	vim.cmd("resize 7")
-	local win = vim.api.nvim_get_current_win()
-    vim.api.nvim_set_hl(0, "BufMarkMapListMsg", { fg = "#606060", italic = true })
-    vim.api.nvim_echo({ { "press g? to see all available keymaps.", "BufMarkMapListMsg" } }, false, {})
-
-    vim.api.nvim_win_set_option(win, "number", false)
-	vim.api.nvim_win_set_option(win, "relativenumber", false)
-	vim.api.nvim_win_set_option(win, "laststatus", 0)
-	vim.api.nvim_win_set_buf(win, buf)
-
-	-- Fill the buffer with file values according to mark_order.
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, build_lines())
-
-	-- Mark the buffer buffer as a special window.
-	vim.api.nvim_buf_set_var(buf, "is_BufMarkList_window", true)
-
-	-- Set buffer options.
-	vim.api.nvim_buf_set_option(buf, "modifiable", false)
-	vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-	vim.api.nvim_buf_set_option(buf, "swapfile", false)
-
-	-- Attach the virtual text (marks remain fixed).
-	update_virtual_text(buf)
-
-	-- Buffer-local mappings.
-	vim.api.nvim_buf_set_keymap(buf, "n", "r", "", {
-		callback = function()
-			return update_mark_key(buf)
-		end,
-		noremap = true,
-		silent = true,
-		desc = "change mark.",
-	})
-	vim.api.nvim_buf_set_keymap(
-		buf,
-		"n",
-		"q",
-		":close<cr>",
-		{ noremap = true, silent = true, desc = "close list window." }
-	)
-	vim.api.nvim_buf_set_keymap(buf, "n", "dd", "", {
-		callback = function()
-			return remove_mark_key(buf)
-		end,
-		noremap = true,
-		silent = true,
-		desc = "delete current entry under-cursor.",
-	})
-	vim.api.nvim_buf_set_keymap(buf, "x", "d", "", {
-		callback = function()
-			return remove_mark_key_v(buf)
-		end,
-		noremap = true,
-		silent = true,
-		desc = "delete current entry under-cursor.",
-	})
-	vim.api.nvim_buf_set_keymap(buf, "n", "<cr>", "", {
-		callback = function()
-			return open_entry_in_prevwin()
-		end,
-		noremap = true,
-		silent = true,
-		desc = "open current entry under-cursor.",
-	})
-	vim.api.nvim_buf_set_keymap(buf, "n", "<C-v>", "", {
-		callback = function()
-			return open_entry_in_vsplit()
-		end,
-		noremap = true,
-		silent = true,
-		desc = "open current entry in vertical split.",
-	})
-	vim.api.nvim_buf_set_keymap(buf, "n", "<C-s>", "", {
-		callback = function()
-			return open_entry_in_split()
-		end,
-		noremap = true,
-		silent = true,
-		desc = "open current entry in horizontal split.",
-	})
-	-- New key mappings for swapping lines:
-	vim.api.nvim_buf_set_keymap(buf, "n", "<C-n>", "", {
-		callback = function()
-			return move_down(buf)
-		end,
-		noremap = true,
-		silent = true,
-		desc = "move current entry down.",
-	})
-	vim.api.nvim_buf_set_keymap(buf, "n", "<C-p>", "", {
-		callback = function()
-			return move_up(buf)
-		end,
-		noremap = true,
-		silent = true,
-		desc = "move current entry up.",
-	})
-	vim.api.nvim_buf_set_keymap(buf, "n", "g?", "", {
-		callback = function()
-			return util.Show_buf_keymaps()
-		end,
-		noremap = true,
-		silent = true,
-		desc = "show help window.",
-	})
 
 	-- Save state on unload.
 	vim.api.nvim_create_autocmd("BufUnload", {
-		buffer = buf,
+		buffer = list_buf,
 		callback = function(args)
 			M.on_bufmarkls_buf_unload(args.buf)
-            vim.o.laststatus = 2
+			vim.o.laststatus = 2
 		end,
 	})
 end
