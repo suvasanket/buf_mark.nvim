@@ -1,64 +1,6 @@
 local M = {}
 local util = require("buf_mark.util")
 
-local function fuzzy_match_metrics(candidate, target)
-	local candidate_len = #candidate
-	local target_len = #target
-	local first_match, last_match = nil, nil
-	local j = 1
-
-	for i = 1, candidate_len do
-		if j <= target_len and candidate:sub(i, i):lower() == target:sub(j, j):lower() then
-			first_match = first_match or i
-			last_match = i
-			j = j + 1
-		end
-	end
-
-	if j > target_len then
-		return { score = last_match - first_match, first = first_match, len = candidate_len }
-	else
-		return nil
-	end
-end
-
-local function is_better(metrics_a, metrics_b)
-	-- Prefer lower score (closer matching characters)
-	if metrics_a.score < metrics_b.score then
-		return true
-	elseif metrics_a.score > metrics_b.score then
-		return false
-	end
-
-	-- If same score, prefer the one with an earlier first match index.
-	if metrics_a.first < metrics_b.first then
-		return true
-	elseif metrics_a.first > metrics_b.first then
-		return false
-	end
-
-	-- If still tied, prefer candidate with shorter overall length.
-	return metrics_a.len < metrics_b.len
-end
-
--- fuzzy finder
-local function best_entry(tbl, target)
-	local best_candidate = nil
-	local best_metrics = nil
-
-	for _, candidate in ipairs(tbl) do
-		local metrics = fuzzy_match_metrics(candidate, target)
-		if metrics then
-			if not best_metrics or is_better(metrics, best_metrics) then
-				best_candidate = candidate
-				best_metrics = metrics
-			end
-		end
-	end
-
-	return best_candidate
-end
-
 local function get_files_and_dirs(path)
 	local files_and_dirs = {}
 	for entry in vim.fs.dir(path) do
@@ -137,7 +79,7 @@ function M.edit_buffer_init(args, opts)
 	local files = get_files_and_dirs(".")
 
 	local entries = util.join_arr(buffers, files)
-	local entry = best_entry(entries, input)
+	local entry = vim.fn.matchfuzzy(entries, input)[1]
 
 	if entry then
 		vim.cmd("e " .. entry)

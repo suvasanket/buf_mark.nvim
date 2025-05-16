@@ -6,17 +6,17 @@ M.file_map = {}
 
 local function goto_file(char, filemap, project_name)
 	local file_path = filemap[char]
-	if not file_path then
-        util.Notify("No buffer mapped to key: " .. char, "warn", "buf_mark")
+	if file_path then
+		if vim.fn.filereadable(file_path) == 1 then
+			vim.cmd("edit! " .. file_path)
+		else
+			filemap[char] = nil
+			c.set_project_keys(project_name, filemap)
+			util.Notify("It seems file has been moved or deleted.", "warn", "buf_mark")
+		end
+	else
+		util.Notify("No buffer mapped to key: " .. char, "warn", "buf_mark")
 	end
-
-    if vim.fn.filereadable(file_path) == 1 then
-        vim.cmd("edit! " .. file_path)
-    else
-        filemap[char] = nil
-        c.set_project_keys(project_name, filemap)
-        util.Notify("It seems file has been moved or deleted.", "warn", "buf_mark")
-    end
 end
 
 local function match_persist_marks(char_array, input_char)
