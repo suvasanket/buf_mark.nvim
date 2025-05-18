@@ -4,11 +4,26 @@ local util = require("buf_mark.util")
 
 M.file_map = {}
 
+local function set_extrafile(root, path)
+	M.Extrafile = root
+	vim.api.nvim_create_autocmd("BufHidden", {
+		pattern = path,
+		once = true,
+		callback = function()
+			M.Extrafile = nil
+		end,
+	})
+end
+
 local function goto_file(char, filemap, project_name)
+	local root = util.GetProjectRoot()
 	local file_path = filemap[char]
 	if file_path then
 		if vim.fn.filereadable(file_path) == 1 then
 			vim.cmd("edit! " .. file_path)
+			if not vim.startswith(file_path, root) then
+				set_extrafile(root, file_path)
+			end
 		else
 			filemap[char] = nil
 			c.set_project_keys(project_name, filemap)
@@ -37,17 +52,6 @@ local function match_persist_marks(char_array, input_char)
 	return matched_chars
 end
 
-local function set_table_entry(key, value, tbl)
-	if tbl == nil then
-		tbl = {}
-	elseif type(tbl) ~= "table" then
-		error("tbl must be a table")
-	end
-
-	tbl[key] = value
-	return tbl
-end
-
 -- initilize mappings
 function M.mappings_init(config)
 	local mappings = config.mappings
@@ -56,7 +60,7 @@ function M.mappings_init(config)
 	vim.api.nvim_create_autocmd("DirChanged", {
 		callback = function()
 			local project_name = util.GetProjectRoot()
-			if project_name then
+			if project_name and c.projects_data[project_name] then
 				M.file_map = c.get_project_keys(project_name)
 			end
 		end,
@@ -75,7 +79,7 @@ function M.mappings_init(config)
 				-- if not interrupted
 				if ok then
 					if char == " " then
-						pcall(vim.cmd, "BufMarkList")
+						pcall(vim.cmd, "BMList")
 						return
 					end
 					goto_file(char, M.file_map, project_name)
@@ -100,7 +104,7 @@ function M.mappings_init(config)
 				local full_filepath = vim.fn.expand("%:p")
 				char = match_persist_marks(config.persist_marks, char)
 
-				local file_map = set_table_entry(char, full_filepath, nil)
+				local file_map = util.set_table_entry(char, full_filepath, nil)
 				c.set_project_keys(project_name, file_map)
 				util.echoprint(string.format("[buf_mark] %s: %s", char, vim.fn.expand("%")))
 			end

@@ -1,23 +1,36 @@
 local M = {}
 
-function M.inspect(var)
-	print(vim.inspect(var))
+---@param array string[]
+---@param string string
+---@return table
+function M.remove_str_from_tbl(array, string)
+	local new_array = {}
+	for i, v in ipairs(array) do
+		if v ~= string then
+			table.insert(new_array, v)
+		end
+	end
+	return new_array
 end
+
 function M.remove_duplicates_from_tbl(array)
-    local seen = {}
-    local result = {}
+	local seen = {}
+	local result = {}
 
-    for _, value in ipairs(array) do
-        if not seen[value] then
-            seen[value] = true
-            table.insert(result, value)
-        end
-    end
+	for _, value in ipairs(array) do
+		if not seen[value] then
+			seen[value] = true
+			table.insert(result, value)
+		end
+	end
 
-    return result
+	return result
 end
 
 function M.GetProjectRoot(markers, path_or_bufnr)
+	if require("buf_mark.mappings").Extrafile then
+		return require("buf_mark.mappings").Extrafile
+	end
 	if markers then
 		return vim.fs.root(path_or_bufnr or 0, markers) or nil
 	end
@@ -42,13 +55,6 @@ function M.echoprint(str, hl)
 	vim.api.nvim_echo({ { str, hl } }, true, {})
 end
 
-function M.UserInput(msg, def)
-	local ok, input = pcall(vim.fn.input, msg, def or "")
-	if ok then
-		return input
-	end
-end
-
 function M.Notify(content, level, title)
 	title = title or "Info"
 
@@ -64,7 +70,13 @@ function M.Notify(content, level, title)
 end
 
 -- print map
+---@param char string
+---@param tbl table
+---@param ordered_keys table
 function M.print_map(char, tbl, ordered_keys)
+	if not tbl then
+		return
+	end
 	local result = {}
 	local seen_keys = {}
 	local separator = " "
@@ -73,7 +85,7 @@ function M.print_map(char, tbl, ordered_keys)
 	-- add sorted keys
 	if ordered_keys then
 		for i, key in ipairs(ordered_keys) do
-			if tbl[key] ~= nil then
+			if tbl[key] ~= nil then -- FIXME some ain't right
 				if key == char then
 					table.insert(result, { "[" .. key .. "]", "ModeMsg" })
 				else
@@ -219,25 +231,36 @@ function M.Show_buf_keymaps()
 end
 
 function M.join_arr(tbl1, tbl2)
-    local result = {}
-    local seen = {}
+	local result = {}
+	local seen = {}
 
-    local function addToResult(element)
-        if not seen[element] then
-            seen[element] = true
-            table.insert(result, element)
-        end
-    end
+	local function addToResult(element)
+		if not seen[element] then
+			seen[element] = true
+			table.insert(result, element)
+		end
+	end
 
-    for _, value in ipairs(tbl1) do
-        addToResult(value)
-    end
+	for _, value in ipairs(tbl1) do
+		addToResult(value)
+	end
 
-    for _, value in ipairs(tbl2) do
-        addToResult(value)
-    end
+	for _, value in ipairs(tbl2) do
+		addToResult(value)
+	end
 
-    return result
+	return result
+end
+
+function M.set_table_entry(key, value, tbl)
+	if tbl == nil then
+		tbl = {}
+	elseif type(tbl) ~= "table" then
+		error("tbl must be a table")
+	end
+
+	tbl[key] = value
+	return tbl
 end
 
 return M
