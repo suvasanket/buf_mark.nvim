@@ -6,8 +6,7 @@ local defaults = {
 		marker_key = "M",
 	},
 	persist_marks = { "a", "s", "d", "f" },
-	edit_buffer = true,
-    edit_buffer_unmatch_behaviour = 'notify', -- |edit, notify|
+    find_fallback = 'notify', -- |edit, notify|
 }
 
 function M.setup(opts)

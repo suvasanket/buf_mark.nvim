@@ -142,14 +142,9 @@ function M.usercmd_init(config)
 	end, { desc = "BufMark remove projects" })
 
 	-- custom edit
-	if config.edit_buffer then
-		vim.api.nvim_create_user_command("EditBuffer", function(opts)
-			c_edit.edit_buffer_init(opts.args, { behaviour = config.edit_buffer_unmatch_behaviour })
-		end, { nargs = 1, complete = c_edit.completion })
-		vim.api.nvim_create_user_command("EB", function(opts)
-			c_edit.edit_buffer_init(opts.args, { behaviour = config.edit_buffer_unmatch_behaviour })
-		end, { nargs = 1, complete = c_edit.completion })
-	end
+	vim.api.nvim_create_user_command("Find", function(opts)
+		c_edit.edit_buffer_init(opts.args, config)
+	end, { nargs = 1, complete = c_edit.completion })
 end
 
 return M

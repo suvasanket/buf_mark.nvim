@@ -20,7 +20,7 @@ end
 local function add_to_buffile(tbl, fullpath)
 	local cwd_lead = get_wd(true)
 	local file = string.gsub(fullpath, "^" .. cwd_lead:gsub("[%-%.%+%*%?%^%$%(%)%[%]%{%}]", "%%%1") .. "/", "")
-	if fullpath ~= "" and vim.fn.isdirectory(file) ~= 1 then
+	if fullpath ~= "" then
 		table.insert(tbl, file)
 	end
 end
@@ -72,25 +72,22 @@ function M.completion(arglead)
 end
 
 --- open the file buffer
----@param args string
----@param opts any
-function M.edit_buffer_init(args, opts)
-	local input = args
-
+---@param arg string
+---@param config table
+function M.edit_buffer_init(arg, config)
 	local entries = get_entries()
-	local entry = vim.fn.matchfuzzy(entries, input)[1]
-    entry = string.format("%s/%s", get_wd(false), entry)
+	local entry = vim.fn.matchfuzzy(entries, arg)[1]
 
-	if entry then
-		vim.cmd("e " .. entry)
-	else
-		local behaviour = opts.behaviour
-		if behaviour == "edit" then
-			vim.cmd("e " .. input)
-		elseif behaviour == "notify" then
-			util.Notify("No such file found.", "warn", "buf_mark")
-		end
-	end
+    if not entry then
+        if config.find_fallback == "edit" then
+            vim.cmd("e " .. arg)
+        elseif config.find_fallback == "notify" then
+            util.Notify("No such file found.", "warn", "buf_mark")
+        end
+    else
+        entry = string.format("%s/%s", get_wd(false), entry)
+        vim.cmd("e " .. entry)
+    end
 end
 
 return M
