@@ -5,7 +5,7 @@ local M = {}
 ---@return table
 function M.remove_str_from_tbl(array, string)
 	local new_array = {}
-	for i, v in ipairs(array) do
+	for _, v in ipairs(array) do
 		if v ~= string then
 			table.insert(new_array, v)
 		end
@@ -27,6 +27,10 @@ function M.remove_duplicates_from_tbl(array)
 	return result
 end
 
+--- get the path to root of the proj
+---@param markers table|nil
+---@param path_or_bufnr integer|nil
+---@return string|nil
 function M.GetProjectRoot(markers, path_or_bufnr)
 	if require("buf_mark.mappings").Extrafile then
 		return require("buf_mark.mappings").Extrafile
@@ -225,7 +229,7 @@ function M.Show_buf_keymaps()
 		style = "minimal",
 		border = "single",
 	}
-	local temp_win = vim.api.nvim_open_win(temp_buf, true, win_opts)
+	local _temp_win = vim.api.nvim_open_win(temp_buf, true, win_opts)
 	vim.api.nvim_buf_set_option(temp_buf, "modifiable", false)
 	vim.api.nvim_buf_set_keymap(temp_buf, "n", "q", "<cmd>close<CR>", { noremap = true, silent = true })
 end

@@ -7,7 +7,7 @@ local defaults = {
 	},
 	persist_marks = { "a", "s", "d", "f" },
 	edit_buffer = true,
-    edit_buffer_unmatch_behaviour = 'notify', -- |edit, buffer, notify|
+    edit_buffer_unmatch_behaviour = 'notify', -- |edit, notify|
 }
 
 function M.setup(opts)

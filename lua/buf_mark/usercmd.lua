@@ -146,7 +146,7 @@ function M.usercmd_init(config)
 		vim.api.nvim_create_user_command("EditBuffer", function(opts)
 			c_edit.edit_buffer_init(opts.args, { behaviour = config.edit_buffer_unmatch_behaviour })
 		end, { nargs = 1, complete = c_edit.completion })
-		vim.api.nvim_create_user_command("E", function(opts)
+		vim.api.nvim_create_user_command("EB", function(opts)
 			c_edit.edit_buffer_init(opts.args, { behaviour = config.edit_buffer_unmatch_behaviour })
 		end, { nargs = 1, complete = c_edit.completion })
 	end
