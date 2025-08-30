@@ -6,7 +6,8 @@ local defaults = {
 		marker_key = "M",
 	},
 	persist_marks = { "a", "s", "d", "f" },
-    find_fallback = 'notify', -- |edit, notify|
+    find_fallback = "notify", -- |edit, notify|
+    find_method = "fd", -- |fd:files+dirs, rg:speed|
 }
 
 function M.setup(opts)
