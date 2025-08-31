@@ -4,7 +4,7 @@ local util = require("buf_mark.util")
 local c = require("buf_mark.caching")
 local mappings = require("buf_mark.mappings")
 local bm_ls = require("buf_mark.list_window")
-local smart_edit = require("buf_mark.smart_edit")
+local find = require("buf_mark.find")
 
 local function split_table(data, remove_keys)
 	local remove_lookup = {}
@@ -142,11 +142,11 @@ function M.usercmd_init(config)
 	end, { desc = "BufMark remove projects" })
 
 	-- custom edit
-	smart_edit.find_fallback = config.find_fallback
-	smart_edit.find_method = config.find_method
+	find.find_fallback = config.find_fallback
+	find.find_method = config.find_method
 	vim.api.nvim_create_user_command("Find", function(opts)
-		smart_edit.edit_buffer_init(opts.args)
-	end, { nargs = 1, complete = smart_edit.completion })
+		find.open_entry(opts.args)
+	end, { nargs = 1, complete = find.get_completion })
 end
 
 return M

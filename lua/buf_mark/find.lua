@@ -77,7 +77,9 @@ local function get_entries()
 end
 
 -- complete
-function M.completion(arglead)
+---@param arglead string
+---@return string[]
+function M.get_completion(arglead)
 	local entries = get_entries()
 	if #arglead == 0 then
 		return entries
@@ -88,7 +90,7 @@ end
 
 --- open the file buffer
 ---@param arg string
-function M.edit_buffer_init(arg)
+function M.open_entry(arg)
 	local entries = get_entries()
 	local entry = vim.fn.matchfuzzy(entries, arg)[1]
 
