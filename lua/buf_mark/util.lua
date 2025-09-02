@@ -268,22 +268,22 @@ function M.set_table_entry(key, value, tbl)
 end
 
 local function trim_empty_strings(tbl)
-    local start = 1
-    while start <= #tbl and tbl[start] == "" do
-        start = start + 1
-    end
+	local start = 1
+	while start <= #tbl and tbl[start] == "" do
+		start = start + 1
+	end
 
-    local finish = #tbl
-    while finish >= 1 and tbl[finish] == "" do
-        finish = finish - 1
-    end
+	local finish = #tbl
+	while finish >= 1 and tbl[finish] == "" do
+		finish = finish - 1
+	end
 
-    local result = {}
-    for i = start, finish do
-        table.insert(result, tbl[i])
-    end
+	local result = {}
+	for i = start, finish do
+		table.insert(result, tbl[i])
+	end
 
-    return result
+	return result
 end
 
 ---Run shellcmd
@@ -293,52 +293,91 @@ end
 ---@return boolean
 ---@return string[]
 function M.run_command(cmd, cwd, opts)
-    local stdout_lines = {}
-    local stderr_lines = {}
-    local exit_code = -1
-    if not cwd then
-        cwd = vim.fn.getcwd()
-    end
+	local stdout_lines = {}
+	local stderr_lines = {}
+	local exit_code = -1
+	if not cwd then
+		cwd = vim.fn.getcwd()
+	end
 
-    cmd = type(cmd) == "string" and require("oz.util.parse_args").parse_args(cmd) or cmd
+	cmd = type(cmd) == "string" and require("oz.util.parse_args").parse_args(cmd) or cmd
 
-    local job_id = vim.fn.jobstart(cmd, {
-        cwd = cwd,
-        stdout_buffered = true,
-        stderr_buffered = true,
-        on_stdout = function(_, data)
-            -- Filter out empty lines often added by jobstart/shell
-            for _, line in ipairs(data) do
-                table.insert(stdout_lines, line)
-            end
-        end,
-        on_stderr = function(_, data)
-            for _, line in ipairs(data) do
-                table.insert(stderr_lines, line)
-            end
-        end,
-        on_exit = function(_, code)
-            exit_code = code
-        end,
-    })
+	local job_id = vim.fn.jobstart(cmd, {
+		cwd = cwd,
+		stdout_buffered = true,
+		stderr_buffered = true,
+		on_stdout = function(_, data)
+			-- Filter out empty lines often added by jobstart/shell
+			for _, line in ipairs(data) do
+				table.insert(stdout_lines, line)
+			end
+		end,
+		on_stderr = function(_, data)
+			for _, line in ipairs(data) do
+				table.insert(stderr_lines, line)
+			end
+		end,
+		on_exit = function(_, code)
+			exit_code = code
+		end,
+	})
 
-    if not job_id or job_id <= 0 then
-        return false, {}
-    end
+	if not job_id or job_id <= 0 then
+		return false, {}
+	end
 
-    local result = vim.fn.jobwait({ job_id }, -1)
-    local final_code = (result and result[1] == -1) and exit_code or (result and result[1]) or -1
+	local result = vim.fn.jobwait({ job_id }, -1)
+	local final_code = (result and result[1] == -1) and exit_code or (result and result[1]) or -1
 
-    if final_code == 0 then
-        if opts and opts.trim_off then
-            return true, stdout_lines
-        else
-            return true, trim_empty_strings(stdout_lines)
-        end
-    else
-        return false, trim_empty_strings(stderr_lines)
-        -- return false, stderr_lines
-    end
+	if final_code == 0 then
+		if opts and opts.trim_off then
+			return true, stdout_lines
+		else
+			return true, trim_empty_strings(stdout_lines)
+		end
+	else
+		return false, trim_empty_strings(stderr_lines)
+	end
+end
+
+-- A helper function to split a string by a delimiter
+local function split_string(input, sep)
+	if sep == nil then
+		sep = "%s"
+	end
+	local t = {}
+	for str in string.gmatch(input, "([^" .. sep .. "]+)") do
+		table.insert(t, str)
+	end
+	return t
+end
+
+--- Function to run fzf on a table of strings
+--- @param items table
+--- @param fzf_options table
+--- @return table
+function M.fzfmatch(items, fzf_options)
+	local input_string = table.concat(items, "\n")
+
+	local command = { "fzf" }
+	if fzf_options then
+		for _, opt in ipairs(fzf_options) do
+			opt = string.gsub(opt, "~", vim.loop.os_homedir())
+			table.insert(command, opt)
+		end
+	end
+
+	local selected_string = vim.fn.trim(vim.fn.system(command, input_string))
+
+	if vim.v.shell_error ~= 0 then
+		return {}
+	end
+
+	if selected_string == "" then
+		return {}
+	end
+
+	return split_string(selected_string, "\n")
 end
 
 return M

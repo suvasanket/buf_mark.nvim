@@ -40,6 +40,7 @@ local function get_files()
 		ok, files_in_dir = util.run_command({ "rg", "--hidden", "--files" }, dir)
 	elseif vim.fn.executable("fd") and M.find_method == "fd" then
 		ok, files_in_dir = util.run_command({ "fd", "--hidden" }, dir)
+		-- fd -td; fd -tf -g '!*.*'; fd -tf -g '*.*'
 	else
 		files_in_dir = vim.fn.glob(dir .. "/**/*", false, true)
 	end
@@ -67,32 +68,37 @@ local function get_buffers()
 end
 
 --- accumulate the buffers and files
+--- @param arg string
 --- @return string[]
-local function get_entries()
+local function get_entries(arg)
 	local buffers = get_buffers()
 	local files = get_files()
 
 	local entries = util.join_arr(buffers, files)
-	return util.remove_duplicates_from_tbl(entries)
+	entries = util.remove_duplicates_from_tbl(entries)
+
+	if #arg then
+		if vim.fn.executable("fzf") then
+			return util.fzfmatch(entries, { "--tiebreak=index", ("--filter=%s"):format(arg) })
+		else
+			return vim.fn.matchfuzzy(entries, arg)
+		end
+	else
+		return entries
+	end
 end
 
 -- complete
 ---@param arglead string
 ---@return string[]
 function M.get_completion(arglead)
-	local entries = get_entries()
-	if #arglead == 0 then
-		return entries
-	else
-		return vim.fn.matchfuzzy(entries, arglead)
-	end
+	return get_entries(arglead)
 end
 
 --- open the file buffer
 ---@param arg string
 function M.open_entry(arg)
-	local entries = get_entries()
-	local entry = vim.fn.matchfuzzy(entries, arg)[1]
+	local entry = get_entries(arg)[1]
 
 	if entry then
 		if entry:sub(1, 1) == "~" then
