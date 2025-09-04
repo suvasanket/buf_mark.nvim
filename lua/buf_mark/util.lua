@@ -267,87 +267,19 @@ function M.set_table_entry(key, value, tbl)
 	return tbl
 end
 
-local function trim_empty_strings(tbl)
-	local start = 1
-	while start <= #tbl and tbl[start] == "" do
-		start = start + 1
-	end
-
-	local finish = #tbl
-	while finish >= 1 and tbl[finish] == "" do
-		finish = finish - 1
-	end
-
-	local result = {}
-	for i = start, finish do
-		table.insert(result, tbl[i])
-	end
-
-	return result
-end
-
----Run shellcmd
----@param cmd string|table
----@param cwd string|nil
----@param opts {trim_off: boolean}|nil
----@return boolean
----@return string[]
-function M.run_command(cmd, cwd, opts)
-	local stdout_lines = {}
-	local stderr_lines = {}
-	local exit_code = -1
-	if not cwd then
-		cwd = vim.fn.getcwd()
-	end
-
-	cmd = type(cmd) == "string" and require("oz.util.parse_args").parse_args(cmd) or cmd
-
-	local job_id = vim.fn.jobstart(cmd, {
-		cwd = cwd,
-		stdout_buffered = true,
-		stderr_buffered = true,
-		on_stdout = function(_, data)
-			-- Filter out empty lines often added by jobstart/shell
-			for _, line in ipairs(data) do
-				table.insert(stdout_lines, line)
-			end
-		end,
-		on_stderr = function(_, data)
-			for _, line in ipairs(data) do
-				table.insert(stderr_lines, line)
-			end
-		end,
-		on_exit = function(_, code)
-			exit_code = code
-		end,
-	})
-
-	if not job_id or job_id <= 0 then
-		return false, {}
-	end
-
-	local result = vim.fn.jobwait({ job_id }, -1)
-	local final_code = (result and result[1] == -1) and exit_code or (result and result[1]) or -1
-
-	if final_code == 0 then
-		if opts and opts.trim_off then
-			return true, stdout_lines
-		else
-			return true, trim_empty_strings(stdout_lines)
-		end
-	else
-		return false, trim_empty_strings(stderr_lines)
-	end
-end
-
 -- A helper function to split a string by a delimiter
-local function split_string(input, sep)
+---@param input string
+---@param sep string
+---@return table
+function M.split_string(input, sep)
 	if sep == nil then
 		sep = "%s"
 	end
 	local t = {}
 	for str in string.gmatch(input, "([^" .. sep .. "]+)") do
-		table.insert(t, str)
+		if str ~= "" then
+			table.insert(t, str)
+		end
 	end
 	return t
 end
@@ -367,17 +299,13 @@ function M.fzfmatch(items, fzf_options)
 		end
 	end
 
-	local selected_string = vim.fn.trim(vim.fn.system(command, input_string))
+	local shell_out = vim.system(command, { stdin = input_string, timeout = 100 }):wait()
 
-	if vim.v.shell_error ~= 0 then
+	if shell_out.code == 0 then
+		return M.split_string(shell_out.stdout, "\n")
+	else
 		return {}
 	end
-
-	if selected_string == "" then
-		return {}
-	end
-
-	return split_string(selected_string, "\n")
 end
 
 return M

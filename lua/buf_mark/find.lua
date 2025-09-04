@@ -29,27 +29,39 @@ local function add_to_buffile(tbl, fullpath)
 	end
 end
 
---- get all files
+--- get files
 ---@return table
 local function get_files()
-	local files = {}
 	local dir = get_wd(true)
-	local ok, files_in_dir
+	local files_in_dir = {}
+	local shell_out = { code = nil, stdout = "" }
+	local default_timeout = 100
 
-	if vim.fn.executable("rg") and M.find_method == "rg" then
-		ok, files_in_dir = util.run_command({ "rg", "--hidden", "--files" }, dir)
-	elseif vim.fn.executable("fd") and M.find_method == "fd" then
-		ok, files_in_dir = util.run_command({ "fd", "--hidden" }, dir)
-		-- fd -td; fd -tf -g '!*.*'; fd -tf -g '*.*'
-	else
-		files_in_dir = vim.fn.glob(dir .. "/**/*", false, true)
+    if dir == vim.loop.os_homedir() then
+    	files_in_dir = vim.v.oldfiles
+    elseif vim.fn.executable("rg") == 1 and M.find_method == "rg" then
+		shell_out = vim.system({ "rg", "--hidden", "--files" }, { cwd = dir, timeout = default_timeout }):wait()
+	elseif vim.fn.executable("fd") == 1 and M.find_method == "fd" then
+		shell_out = vim.system({ "fd", "--hidden" }, { cwd = dir, timeout = default_timeout }):wait()
+    else
+        files_in_dir = vim.fn.glob(dir .. "/**/*", false, true)
 	end
 
-	if ok or #files_in_dir then
+	if shell_out and shell_out.code == 124 then
+		shell_out = vim.system({ "ls" }, { cwd = dir, timeout = default_timeout }):wait()
+	end
+
+	if shell_out and shell_out.code == 0 and shell_out.stdout ~= "" then
+		files_in_dir = util.split_string(shell_out.stdout, "\n")
+	end
+
+	local files = {}
+	if type(files_in_dir) == "table" and #files_in_dir > 0 then
 		for _, file in ipairs(files_in_dir) do
 			add_to_buffile(files, file)
 		end
 	end
+
 	return files
 end
 
